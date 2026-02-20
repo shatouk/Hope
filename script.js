@@ -36,8 +36,12 @@ function endDrag() {
     setTimeout(() => {
       paper.style.transition = "none";
       paper.style.transform = "scale(1)";
-      paper.style.left = "100px";
-      paper.style.top = "120px";
+      const margin = 20; // فاصله از لبه‌ها
+const randomX = Math.random() * (window.innerWidth - paper.offsetWidth - margin*2) + margin;
+const randomY = Math.random() * (window.innerHeight - paper.offsetHeight - margin*2) + margin;
+
+paper.style.left = randomX + "px";
+paper.style.top = randomY + "px";
     }, 300);
   }
 }
