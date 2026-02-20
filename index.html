@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Hope</title>
+<style>
+body {
+  margin: 0;
+  overflow: hidden;
+  background: #000;
+}
+canvas {
+  display: block;
+  touch-action: none;
+}
+</style>
+</head>
+<body>
+
+<canvas id="scene"></canvas>
+
+<script>
+const canvas = document.getElementById("scene");
+const ctx = canvas.getContext("2d");
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  bin.x = canvas.width / 2;
+  bin.y = canvas.height * 0.6;
+
+  paper.startX = canvas.width - 250;
+  paper.startY = canvas.height - 200;
+
+  if (paper.state === "idle") {
+    paper.x = paper.startX;
+    paper.y = paper.startY;
+  }
+}
+
+let bin = {
+  x: window.innerWidth / 2,
+  y: window.innerHeight * 0.6,
+  width: 180,
+  height: 220
+};
+
+let paper = {
+  startX: window.innerWidth - 250,
+  startY: window.innerHeight - 200,
+  x: window.innerWidth - 250,
+  y: window.innerHeight - 200,
+  vx: 0,
+  vy: 0,
+  size: 130,
+  dragging: false,
+  offsetX: 0,
+  offsetY: 0,
+  state: "idle",
+  insideTimer: 0,
+  points: []
+};
+
+function generateShape(size) {
+  const pts = [];
+  const count = 18;
+  const radius = size / 2;
+
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2;
+    const offset = (Math.random() - 0.5) * 18;
+
+    pts.push({
+      angle: angle,
+      radius: radius + offset
+    });
+  }
+  return pts;
+}
+
+paper.points = generateShape(paper.size);
+
+function resetPaper() {
+  paper.x = paper.startX;
+  paper.y = paper.startY;
+  paper.state = "idle";
+}
+
+function drawIrregularPaper(x, y) {
+  const cx = x + paper.size / 2;
+  const cy = y + paper.size / 2;
+
+  ctx.beginPath();
+
+  paper.points.forEach((p, i) => {
+    const px = cx + p.radius * Math.cos(p.angle);
+    const py = cy + p.radius * Math.sin(p.angle);
+
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  });
+
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawScene() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // دیوار
+  let grad = ctx.createLinearGradient(0, 0, canvas.width, 0);
+  grad.addColorStop(0, "#e6ff4d");
+  grad.addColorStop(0.5, "#999");
+  grad.addColorStop(1, "#e6ff4d");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, canvas.width, canvas.height * 0.6);
+
+  // کف
+  ctx.fillStyle = "#333";
+  ctx.fillRect(0, canvas.height * 0.6, canvas.width, canvas.height);
+
+  // سایه سطل
+  ctx.fillStyle = "rgba(0,0,0,0.4)";
+  ctx.beginPath();
+  ctx.ellipse(bin.x, bin.y + bin.height + 15, 90, 25, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // سطل
+  ctx.fillStyle = "#ddd";
+  ctx.beginPath();
+  ctx.moveTo(bin.x - 80, bin.y);
+  ctx.lineTo(bin.x - 60, bin.y + bin.height);
+  ctx.lineTo(bin.x + 60, bin.y + bin.height);
+  ctx.lineTo(bin.x + 80, bin.y);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = "#fff";
+  ctx.beginPath();
+  ctx.ellipse(bin.x, bin.y, 80, 25, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // حالت‌ها
+  if (paper.state === "falling") {
+    paper.y += 6;
+    if (paper.y > bin.y + 40) {
+      paper.state = "inside";
+      paper.insideTimer = Date.now();
+    }
+  }
+
+  if (paper.state === "inside") {
+    if (Date.now() - paper.insideTimer > 1000) {
+      paper.state = "popping";
+      paper.vy = -18;
+      paper.vx = (paper.startX - paper.x) * 0.07;
+    }
+  }
+
+  if (paper.state === "popping") {
+    paper.x += paper.vx;
+    paper.y += paper.vy;
+    paper.vy += 0.7;
+
+    if (paper.y > canvas.height - 180) {
+      paper.state = "returning";
+    }
+  }
+
+  if (paper.state === "returning") {
+    paper.x += (paper.startX - paper.x) * 0.1;
+    paper.y += (paper.startY - paper.y) * 0.1;
+
+    if (Math.abs(paper.x - paper.startX) < 1) {
+      resetPaper();
+    }
+  }
+
+  // رسم کاغذ (داخل سطل دیده نشه)
+  if (paper.state !== "inside") {
+    ctx.fillStyle = "#fff";
+    drawIrregularPaper(paper.x, paper.y);
+
+    ctx.fillStyle = "#000";
+    ctx.font = "bold 40px Arial";
+    ctx.fillText("hope", paper.x + 30, paper.y + 80);
+  }
+
+  requestAnimationFrame(drawScene);
+}
+
+drawScene();
+
+canvas.addEventListener("pointerdown", (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.
+    clientY - rect.top;
+
+  if (
+    mx > paper.x &&
+    mx < paper.x + paper.size &&
+    my > paper.y &&
+    my < paper.y + paper.size
+  ) {
+    paper.dragging = true;
+    paper.offsetX = mx - paper.x;
+    paper.offsetY = my - paper.y;
+  }
+});
+
+canvas.addEventListener("pointermove", (e) => {
+  if (paper.dragging) {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
+    paper.x += (mx - paper.offsetX - paper.x) * 0.4;
+    paper.y += (my - paper.offsetY - paper.y) * 0.4;
+  }
+});
+
+canvas.addEventListener("pointerup", () => {
+  if (paper.dragging) {
+    paper.dragging = false;
+
+    if (
+      paper.x + paper.size > bin.x - 70 &&
+      paper.x < bin.x + 70 &&
+      paper.y + paper.size > bin.y &&
+      paper.y < bin.y + bin.height
+    ) {
+      paper.state = "falling";
+    }
+  }
+});
+
+window.addEventListener("resize", resizeCanvas);
+window.addEventListener("orientationchange", resizeCanvas);
+resizeCanvas();
+</script>
+
+</body>
+</html>
